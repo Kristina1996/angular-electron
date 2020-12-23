@@ -1,15 +1,13 @@
-import {Component, OnInit, OnChanges, SimpleChanges, Input, OnDestroy, ChangeDetectorRef} from '@angular/core';
-import { Subscription } from 'rxjs';
+import {Component, OnInit, OnChanges, SimpleChanges, Input, OnDestroy, ChangeDetectorRef, Output, EventEmitter} from '@angular/core';
+import { Subject, Subscription } from 'rxjs';
 
-import { IntegrationResultModel, ReportModel } from '../../../core/models/report.model';
+import { ReportModel } from '../../../core/models/report.model';
 
 import { MainService } from '../../../core/services/main.service';
 import { AdapterService } from '../../../core/services/adapter.service';
 import { FormServiceService } from '../../../core/services/form-service.service';
-import { TimeTrackerWebService } from '../../../core/services/time-tracker-web.service';
-import { ParseToXmlService } from '../../../core/services/parse-to-xml.service';
-import { PasswordEncoderService } from '../../../core/services/password-encoder.service';
 import {TogglIntegrationService} from '../../../core/services/toggl-integration.service';
+import { takeUntil } from 'rxjs/operators';
 
 @Component({
   selector: 'app-report',
@@ -20,21 +18,19 @@ import {TogglIntegrationService} from '../../../core/services/toggl-integration.
 export class ReportComponent implements OnInit, OnChanges, OnDestroy {
 
   @Input() filePath: string;
+  @Output() uploadReport = new EventEmitter<{ filePath: string }>();
+
   report: ReportModel;
   subscription: Subscription;
   commonTotalHours = 0;
   specialTotalHours = 0;
   totalHours = 0;
-  integrationResult: IntegrationResultModel|boolean;
-  isShowErrorReportModal = false;
   isShowTogglIcon = false;
 
+  private unsubscribe$: Subject<void> = new Subject();
+
   constructor(private mainService: MainService,
-              private timeTrackerWebService: TimeTrackerWebService,
-              private parseToXmlService: ParseToXmlService,
-              private formService: FormServiceService,
               private togglIntegrationService: TogglIntegrationService,
-              private passwordEncoderService: PasswordEncoderService,
               private adapterService: AdapterService,
               private cdr: ChangeDetectorRef) {
     this.subscription = this.mainService.data.subscribe(val => {
@@ -42,16 +38,18 @@ export class ReportComponent implements OnInit, OnChanges, OnDestroy {
     });
   }
 
-  ngOnInit() {
-    this.togglIntegrationService.updateTogglReport.subscribe(value => {
-      // Пришел отчет с toggl.com
-      if (value === 1) {
-        this.getReportContent();
-      } else if (value === 2) {
-        this.isShowTogglIcon = true;
-        this.cdr.detectChanges();
-      }
-    });
+  ngOnInit(): void {
+    this.togglIntegrationService.updateTogglReport
+      .pipe(takeUntil(this.unsubscribe$))
+      .subscribe(value => {
+        // Пришел отчет с toggl.com
+        if (value === 1) {
+          this.getReportContent();
+        } else if (value === 2) {
+          this.isShowTogglIcon = true;
+          this.cdr.detectChanges();
+        }
+      });
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -82,22 +80,8 @@ export class ReportComponent implements OnInit, OnChanges, OnDestroy {
     });
   }
 
-  uploadReport() {
-    const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-    if (userInfo) {
-      userInfo.password = this.passwordEncoderService.decryptPassword(userInfo.password);
-      this.mainService.getXmlFileContent(this.filePath).then(content => {
-        if (content) {
-          this.timeTrackerWebService.uploadReport(userInfo, content).subscribe(result => {
-            this.integrationResult = this.adapterService.getIntegrationResultModel(result);
-            this.toogleErrorReportModal(true);
-          }, error => {
-            this.integrationResult = this.adapterService.getIntegrationResultModel(error);
-            this.toogleErrorReportModal(true);
-          });
-        }
-      });
-    }
+  onUploadReport(): void {
+    this.uploadReport.emit({ filePath: this.filePath });
   }
 
   syncToggl() {
@@ -108,12 +92,9 @@ export class ReportComponent implements OnInit, OnChanges, OnDestroy {
     }
   }
 
-  toogleErrorReportModal(show: boolean) {
-    this.isShowErrorReportModal = show;
-    this.cdr.detectChanges();
-  }
-
   ngOnDestroy() {
     this.subscription.unsubscribe();
+    this.unsubscribe$.next();
+    this.unsubscribe$.complete();
   }
 }

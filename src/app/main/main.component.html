@@ -19,11 +19,25 @@
                       [selectedFile]="selectedFileName"
                       [files]="files"
                       (sendFileName)="onSendFileName($event)"
+                      (uploadReport)="onClickUploadReport($event)"
                       (openModal)="onShowModalNewReport($event)"></app-files-menu>
     </div>
     <main class="content__report">
-      <app-report *ngIf="showReportComponent; else elseBlock" [filePath]="selectedFile"></app-report>
+      <app-report *ngIf="showReportComponent; else elseBlock" [filePath]="selectedFile" (uploadReport)="onClickUploadReport($event)"></app-report>
       <ng-template #elseBlock>Выберите отчёт...</ng-template>
     </main>
   </div>
 </div>
+
+
+<app-base-modal *ngIf="showPasswordModal" [config]="pswConfig" (closeModal)="closePswModal()" (save)="savePsw()">
+  <div class="content">
+    <input [(ngModel)]="password" placeholder="Password" type="password" class="password-input">
+  </div>
+</app-base-modal>
+
+<ng-container *ngIf="isShowErrorReportModal">
+  <app-error-report-modal (closeModal)="toogleErrorReportModal($event)"
+                          [integrationResult]="integrationResult">
+  </app-error-report-modal>
+</ng-container>

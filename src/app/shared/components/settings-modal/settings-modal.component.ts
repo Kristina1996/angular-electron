@@ -1,6 +1,4 @@
 import {ChangeDetectorRef, Component, EventEmitter, OnInit, Output} from '@angular/core';
-import { TimeTrackerWebService } from '../../../core/services/time-tracker-web.service';
-import { PasswordEncoderService } from '../../../core/services/password-encoder.service';
 import { AdapterService } from '../../../core/services/adapter.service';
 import * as moment from 'moment';
 import { IntegrationResultModel } from '../../../core/models/report.model';
@@ -40,12 +38,12 @@ export class SettingsModalComponent implements OnInit {
   integrationResult: IntegrationResultModel|boolean;
   isShowErrorReportModal = false;
 
-  constructor(private timeTrackerWebService: TimeTrackerWebService,
-              private passwordEncoderService: PasswordEncoderService,
+  constructor (
               private dataStorageService: DataStorageService,
               private cdr: ChangeDetectorRef,
               private togglIntegrationService: TogglIntegrationService,
-              private adapterService: AdapterService) {}
+              private adapterService: AdapterService
+  ) {}
 
   ngOnInit() {
     this.checkUserInfo();
@@ -70,9 +68,8 @@ export class SettingsModalComponent implements OnInit {
   checkUserInfo() {
     const userInfo = JSON.parse(localStorage.getItem('userInfo'));
     if (userInfo) {
-      userInfo.password = this.passwordEncoderService.decryptPassword(userInfo.password);
       this.username = userInfo.username;
-      this.password = userInfo.password;
+      this.password = '';
       this.host = userInfo.host;
       this.domain = userInfo.domain;
     }
@@ -84,11 +81,14 @@ export class SettingsModalComponent implements OnInit {
 
   integrate() {
     const userInfo = { username: this.username, password: this.password, domain: this.domain, host: this.host };
-    this.dataStorageService.getDataFromService({...userInfo}).subscribe(result => {
+    this.dataStorageService.getDataFromService({...userInfo}).subscribe(() => {
       const successMsg = moment().format(CLIENT_TIME_FORMAT) + ' Успешно';
+      const userInfoStored = { username: this.username, password: '', domain: this.domain, host: this.host };
+
       this.integrationLog.push(successMsg);
-      userInfo.password = this.passwordEncoderService.encryptPassword(this.password);
-      localStorage.setItem('userInfo', JSON.stringify(userInfo));
+
+      localStorage.setItem('userInfo', JSON.stringify(userInfoStored));
+
       this.cdr.detectChanges();
     }, error => {
       const errMsg = moment().format(CLIENT_TIME_FORMAT) + ' Ошибка (см. лог)';

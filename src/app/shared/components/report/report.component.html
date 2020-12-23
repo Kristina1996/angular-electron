@@ -7,7 +7,7 @@
   <ng-container *ngIf="isShowTogglIcon">
     <app-icon-button class="sync-toggl" [color]="'dark'" [iconType]="'sync_toggl'" [title]="'Синхронизироваться с toggl.com'" (click)="syncToggl()"></app-icon-button>
   </ng-container>
-  <app-icon-button class="upload-icon" [color]="'dark'" [iconType]="'upload'" [title]="'Отправить отчёт'" (click)="uploadReport()"></app-icon-button>
+  <app-icon-button class="upload-icon" [color]="'dark'" [iconType]="'upload'" [title]="'Отправить отчёт'" (click)="onUploadReport()"></app-icon-button>
   <ng-container *ngIf="report">
     <section id="content-tab1">
       <app-common-part [data]="report" (onTotalHoursChange)="onCommonTotalHoursChange($event)"></app-common-part>
@@ -17,8 +17,3 @@
     </section>
   </ng-container>
 </div>
-<ng-container *ngIf="isShowErrorReportModal">
-  <app-error-report-modal (closeModal)="toogleErrorReportModal($event)"
-                          [integrationResult]="integrationResult">
-  </app-error-report-modal>
-</ng-container>

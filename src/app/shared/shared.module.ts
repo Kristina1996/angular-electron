@@ -25,7 +25,7 @@ import { ErrorReportModalComponent } from './components/modals/error-report-moda
 @NgModule({
   declarations: [ FilterPipe, PageNotFoundComponent, WebviewDirective, ReportComponent, FilesMenuComponent, CommonPartComponent, SpecialPartComponent, NewReportModalComponent, FormInputComponent, IconButtonComponent, SettingsModalComponent, BaseModalComponent, FilterPipe, InputAutocompleteComponent, ContextMenuComponent, ErrorReportModalComponent],
   imports: [CommonModule, TranslateModule, BrowserModule, FormsModule, ReactiveFormsModule],
-  exports: [ TranslateModule, WebviewDirective, ReportComponent, FilesMenuComponent, NewReportModalComponent, IconButtonComponent, SettingsModalComponent, BaseModalComponent],
+  exports: [ ErrorReportModalComponent, TranslateModule, WebviewDirective, ReportComponent, FilesMenuComponent, NewReportModalComponent, IconButtonComponent, SettingsModalComponent, BaseModalComponent],
   schemas: [ CUSTOM_ELEMENTS_SCHEMA ]
 })
 export class SharedModule {}

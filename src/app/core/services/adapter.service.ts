@@ -47,6 +47,8 @@ export class AdapterService {
         return integrationResult;
       } else if (result.response) {
         integrationResult.serverError = result.body;
+      } else if (result.message) {
+        integrationResult.serverError = result.message;
       }
       return integrationResult;
     } else {

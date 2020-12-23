@@ -1,9 +1,13 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import * as path from 'path';
 import { MainService } from '../core/services/main.service';
-import { TimeTrackerWebService } from '../core/services/time-tracker-web.service';
-import {PasswordEncoderService} from '../core/services/password-encoder.service';
 import {DataStorageService} from '../core/services/data-storage.service';
+import { takeUntil } from 'rxjs/operators';
+import { UploadReportService } from '../core/services/upload-report.service';
+import { Subject } from 'rxjs';
+import { AdapterService } from '../core/services/adapter.service';
+import { IntegrationResultModel } from '../core/models/report.model';
+import { IModalConfig } from '../shared/components/base-modal/modal-config';
 
 const electron = require('electron');
 
@@ -13,7 +17,7 @@ const electron = require('electron');
   styleUrls: ['./main.component.scss'],
   providers: [ MainService ]
 })
-export class MainComponent implements OnInit {
+export class MainComponent implements OnInit, OnDestroy {
 
   public showFilesMenuComponent: Boolean = false;
   public showReportComponent: Boolean = false;
@@ -25,13 +29,71 @@ export class MainComponent implements OnInit {
   public selectedFile;
   public selectedFileName;
 
+  public integrationResult: IntegrationResultModel | boolean;
+  public isShowErrorReportModal = false;
+  public filePath = '';
+  public password = '';
+  public showPasswordModal = false;
+  public pswConfig: IModalConfig = {
+    title: 'Enter the password',
+    save: {
+      visible: true,
+      title: 'Отправить'
+    },
+    cancel: {
+      visible: true,
+      title: 'Отмена'
+    }
+  }
+  private sendPassword$ = new Subject<string>();
+  private unsubscribe$: Subject<void> = new Subject();
+
   constructor(private mainService: MainService,
-              private timeTrackerWebService: TimeTrackerWebService,
-              private passwordEncoderService: PasswordEncoderService,
+              private cdr: ChangeDetectorRef,
+              private uploadReportService: UploadReportService,
+              private adapterService: AdapterService,
               private dataStorageService: DataStorageService) { }
 
   ngOnInit() {
     this.getDataFromLocalStorage();
+
+    this.sendPassword$
+    .pipe(takeUntil(this.unsubscribe$))
+    .subscribe((password) => {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+
+      if (!userInfo) {
+        return;
+      }
+
+      userInfo.password = password;
+
+      // FIXME - subscribe inside subscribe...
+      this.uploadReportService.upload(this.filePath, userInfo)
+        .subscribe(result => {
+          this.integrationResult = this.adapterService.getIntegrationResultModel(result);
+          this.toogleErrorReportModal(true);
+        }, error => {
+          this.integrationResult = this.adapterService.getIntegrationResultModel(error);
+          this.toogleErrorReportModal(true);
+        });
+    });
+  }
+
+  toogleErrorReportModal(show: boolean): void {
+    this.isShowErrorReportModal = show;
+    this.cdr.detectChanges();
+  }
+
+  savePsw(): void {
+    this.sendPassword$.next(this.password);
+
+    this.closePswModal();
+  }
+
+  closePswModal(): void {
+    this.showPasswordModal = false;
+    this.password = '';
   }
 
   getDataFromLocalStorage() {
@@ -59,13 +121,15 @@ export class MainComponent implements OnInit {
     }
   }
 
+  onClickUploadReport(event: { filePath: string }): void {
+    this.filePath = event.filePath;
+    this.showPasswordModal = true;
+  }
+
   updateDataFromBack() {
-    const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-    const password = this.passwordEncoderService.decryptPassword(userInfo.password);
-    userInfo.password = password;
-    (localStorage.getItem('users') && localStorage.getItem('projects'))
-    ? this.dataStorageService.updateDataFromLocalStorage()
-    : this.dataStorageService.getDataFromService({...userInfo});
+    if (localStorage.getItem('users') && localStorage.getItem('projects')) {
+      this.dataStorageService.updateDataFromLocalStorage()
+    }
   }
 
   openDialog() {
@@ -131,5 +195,10 @@ export class MainComponent implements OnInit {
 
   onCloseSettingsModal(show: Boolean) {
     this.showSettingsModal = show;
+  }
+
+  ngOnDestroy() {
+    this.unsubscribe$.next();
+    this.unsubscribe$.complete();
   }
 }
